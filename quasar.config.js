@@ -13,10 +13,15 @@
 
 const { configure } = require('quasar/wrappers');
 const path = require('path');
+const i18n = require('@intlify/vite-plugin-vue-i18n');
+const autoImport = require('unplugin-auto-import/vite');
+const components = require('unplugin-vue-components/vite');
+
+const autoImportPath = path.resolve(__dirname, 'configs/');
 
 module.exports = configure((/* ctx */) => ({
   eslint: {
-    // fix: true,
+    fix: true,
     // include = [],
     // exclude = [],
     // rawOptions = {},
@@ -56,6 +61,10 @@ module.exports = configure((/* ctx */) => ({
 
   // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#build
   build: {
+    alias: {
+      modules: path.join(__dirname, './src/modules'),
+      boot: path.join(__dirname, './src/boot'),
+    },
     target: {
       browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
       node: 'node16',
@@ -78,15 +87,53 @@ module.exports = configure((/* ctx */) => ({
     // distDir
 
     // extendViteConf (viteConf) {},
-    // viteVuePluginOptions: {},
+    viteVuePluginOptions: {
+      include: [/\.vue$/],
+      reactivityTransform: true,
+      test: {
+        include: ['test/**/*.test.ts'],
+        environment: 'happy-dom',
+        deps: {
+          inline: ['@vue'],
+        },
+      },
+    },
 
     vitePlugins: [
-      ['@intlify/vite-plugin-vue-i18n', {
+      [i18n, {
         // if you want to use Vue I18n Legacy API, you need to set `compositionOnly: false`
         // compositionOnly: false,
 
         // you need to set i18n resource including paths !
+        runtimeOnly: true,
         include: path.resolve(__dirname, './src/i18n/**'),
+      }],
+      [autoImport, {
+        imports: [
+          'vue',
+          'vue-router',
+          'vue-i18n',
+          'quasar',
+          'pinia',
+        ],
+        eslintrc: {
+          enabled: true,
+          filepath: path.resolve(autoImportPath, '.eslintrc-auto-import.json'),
+        },
+        dirs: [
+          'src/store',
+          'src/modules/**/store',
+        ],
+        vueTemplate: true,
+        dts: path.resolve(autoImportPath, 'auto-imports.d.ts'),
+      }],
+      [components, {
+        extensions: ['vue'],
+        // allow auto import and register components used in markdown
+        include: [/\.vue$/, /\.vue\?vue/],
+        dirs: ['src/modules/widgets/', 'src/layouts/**/widgets/'],
+        deep: true,
+        dts: path.resolve(autoImportPath, 'components.d.ts'),
       }],
     ],
   },
@@ -99,7 +146,10 @@ module.exports = configure((/* ctx */) => ({
 
   // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework
   framework: {
-    config: {},
+    config: {
+      loading: { /* look at QuasarConfOptions from the API card */ },
+      notify: { /* look at QuasarConfOptions from the API card */ },
+    },
 
     // iconSet: 'material-icons', // Quasar icon set
     // lang: 'en-US', // Quasar language pack
@@ -112,7 +162,14 @@ module.exports = configure((/* ctx */) => ({
     // directives: [],
 
     // Quasar plugins
-    plugins: [],
+    plugins: [
+      'AddressbarColor',
+      'Cookies',
+      'Dialog',
+      'Loading',
+      'Meta',
+      'Notify',
+    ],
   },
 
   // animations: 'all', // --- includes all animations
@@ -139,7 +196,7 @@ module.exports = configure((/* ctx */) => ({
     // extendSSRWebserverConf (esbuildConf) {},
     // extendPackageJson (json) {},
 
-    pwa: false,
+    pwa: true,
 
     // manualStoreHydration: true,
     // manualPostHydrationTrigger: true,
